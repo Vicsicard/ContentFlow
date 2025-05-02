@@ -56,17 +56,68 @@
             margin-bottom: 15px;
             border-radius: 3px;
         }
-        .status-processing {
-            background-color: #fffde7;
-            border-left: 5px solid #ffd600;
+        .flash-messages {
+            margin-bottom: 15px;
         }
-        .status-success {
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            background-color: #ffebee;
+            color: #f44336;
+            border-left: 5px solid #f44336;
+        }
+        /* Jobs table styling */
+        .jobs-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .jobs-table th, .jobs-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .jobs-table th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+        .jobs-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        /* Status colors */
+        .status-pending {
+            background-color: #fff8e1;
+        }
+        .status-app1 {
+            background-color: #e1f5fe;
+        }
+        .status-app2 {
             background-color: #e8f5e9;
-            border-left: 5px solid #4CAF50;
+        }
+        .status-app3 {
+            background-color: #f3e5f5;
+        }
+        .status-complete {
+            background-color: #e8f5e9;
         }
         .status-error {
             background-color: #ffebee;
-            border-left: 5px solid #f44336;
+        }
+        /* Action links */
+        .action-links {
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+        .button:hover {
+            background-color: #45a049;
         }
         .logs {
             background-color: #f8f9fa;
@@ -80,17 +131,6 @@
         }
         .error-log {
             color: #f44336;
-        }
-        .flash-messages {
-            margin-bottom: 15px;
-        }
-        .flash-message {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 3px;
-            background-color: #ffebee;
-            color: #f44336;
-            border-left: 5px solid #f44336;
         }
     </style>
 </head>

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Processing Jobs</h2>
+
+<div class="action-links">
+    <a href="{{ url_for('index') }}" class="button">Upload New File</a>
+</div>
+
+{% if jobs %}
+<table class="jobs-table">
+    <thead>
+        <tr>
+            <th>Client ID</th>
+            <th>Status</th>
+            <th>VTT File</th>
+            <th>Created</th>
+            <th>Last Updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for job in jobs %}
+        <tr class="status-{{ job.status }}">
+            <td>{{ job.client_id }}</td>
+            <td>{{ job.status }}</td>
+            <td>{{ job.vtt_filename }}</td>
+            <td>{{ job.created_at }}</td>
+            <td>{{ job.last_updated }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No jobs found. <a href="{{ url_for('index') }}">Upload a file</a> to create a new job.</p>
+{% endif %}
+{% endblock %}

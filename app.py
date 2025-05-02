@@ -1,9 +1,10 @@
 import os
 import json
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import requests
 from dotenv import load_dotenv
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -15,122 +16,171 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 
-# Process status tracking
-PROCESS_STATUS = {
-    'current_step': None,
-    'client_id': None,
-    'client_name': None,
-    'project_id': None,
-    'start_time': None,
-    'logs': [],
-    'errors': [],
-    'is_processing': False,
-    'vtt_file': None,
-    'mp4_file': None
-}
-
-def log_message(message, is_error=False):
-    """Add a message to the logs with timestamp"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] {message}"
-    PROCESS_STATUS['logs'].append(log_entry)
-    
-    if is_error:
-        PROCESS_STATUS['errors'].append(log_entry)
-        print(f"ERROR: {log_entry}")
-    else:
-        print(log_entry)
+def get_supabase_client():
+    """Get a simple wrapper for Supabase API calls"""
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+    return {"url": SUPABASE_URL, "headers": headers}
 
 def get_clients_from_supabase():
     """Fetch client list from Supabase"""
     try:
-        # This is a simplified version for demo purposes
-        if not SUPABASE_URL or not SUPABASE_KEY:
-            log_message("Supabase credentials not configured", is_error=True)
+        supabase = get_supabase_client()
+        
+        if not supabase["url"] or not supabase["headers"]["apikey"]:
             return []
             
-        # For demonstration purposes, returning dummy data
-        # In production, you would make an actual API call to Supabase
+        response = requests.get(
+            f"{supabase['url']}/rest/v1/user_projects?select=id,name",
+            headers=supabase["headers"]
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        
+        # Fallback to demo data if API fails
+        print(f"Error fetching clients: {response.status_code} {response.text}")
         return [
             {"id": "client1", "name": "Demo Client 1"},
             {"id": "client2", "name": "Demo Client 2"},
             {"id": "annie", "name": "Annie"},
         ]
     except Exception as e:
-        log_message(f"Error fetching clients: {str(e)}", is_error=True)
+        print(f"Error fetching clients: {str(e)}")
+        # Return demo data on error
+        return [
+            {"id": "client1", "name": "Demo Client 1"},
+            {"id": "client2", "name": "Demo Client 2"},
+            {"id": "annie", "name": "Annie"},
+        ]
+
+def create_job(client_id, vtt_filename):
+    """Create a new job in Supabase"""
+    try:
+        supabase = get_supabase_client()
+        
+        job_data = {
+            "id": str(uuid.uuid4()),
+            "client_id": client_id,
+            "status": "pending",
+            "vtt_filename": vtt_filename,
+            "created_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat()
+        }
+        
+        response = requests.post(
+            f"{supabase['url']}/rest/v1/processing_jobs",
+            headers=supabase["headers"],
+            json=job_data
+        )
+        
+        if response.status_code == 201:
+            return job_data["id"]
+        else:
+            print(f"Error creating job: {response.status_code} {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error creating job: {str(e)}")
+        return None
+
+def get_jobs():
+    """Get all jobs from Supabase"""
+    try:
+        supabase = get_supabase_client()
+        
+        response = requests.get(
+            f"{supabase['url']}/rest/v1/processing_jobs?order=created_at.desc",
+            headers=supabase["headers"]
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error fetching jobs: {response.status_code} {response.text}")
+            return []
+    except Exception as e:
+        print(f"Error fetching jobs: {str(e)}")
         return []
 
-def simulate_processing():
-    """Simulate processing for demo purposes"""
-    PROCESS_STATUS['is_processing'] = True
-    PROCESS_STATUS['current_step'] = 'app1'
-    log_message(f"Starting App 1 processing for client {PROCESS_STATUS['client_id']}")
-    log_message("App 1 processing complete")
-    
-    PROCESS_STATUS['current_step'] = 'app2'
-    log_message(f"Starting App 2 processing for client {PROCESS_STATUS['client_id']}")
-    log_message("App 2 processing complete")
-    
-    PROCESS_STATUS['current_step'] = 'app3'
-    log_message(f"Starting App 3 processing for client {PROCESS_STATUS['client_id']}")
-    log_message("App 3 processing complete")
-    
-    log_message("Entire workflow completed successfully!")
-    PROCESS_STATUS['is_processing'] = False
-    return True
+def upload_file_to_supabase(file_content, filename, bucket_name="input-files"):
+    """Upload a file to Supabase Storage"""
+    try:
+        supabase = get_supabase_client()
+        
+        # Storage API has a different endpoint
+        storage_url = f"{supabase['url']}/storage/v1/object/{bucket_name}/{filename}"
+        
+        # Custom headers for storage
+        headers = supabase["headers"].copy()
+        headers["Content-Type"] = "application/octet-stream"
+        
+        response = requests.post(
+            storage_url,
+            headers=headers,
+            data=file_content
+        )
+        
+        if response.status_code == 200:
+            return True
+        else:
+            print(f"Error uploading file: {response.status_code} {response.text}")
+            return False
+    except Exception as e:
+        print(f"Error uploading file: {str(e)}")
+        return False
 
 # Routes
 @app.route('/')
 def index():
     """Display the upload form"""
     clients = get_clients_from_supabase()
-    return render_template('index.html', clients=clients, status=PROCESS_STATUS)
+    return render_template('index.html', clients=clients)
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    """Handle file upload and simulate processing"""
-    if PROCESS_STATUS['is_processing']:
-        flash('A process is already running. Please wait for it to complete.')
-        return redirect(url_for('status'))
-        
+    """Handle file upload and create job"""
     client_id = request.form.get('client_id')
     
     if not client_id:
-        flash('Missing required fields')
+        flash('Client ID is required')
         return redirect(url_for('index'))
     
-    # In a serverless environment, we would store files in cloud storage
-    # and trigger processing via webhooks or queues
-    PROCESS_STATUS['client_id'] = client_id
-    PROCESS_STATUS['start_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if 'vtt_file' not in request.files:
+        flash('VTT file is required')
+        return redirect(url_for('index'))
+        
+    vtt_file = request.files['vtt_file']
     
-    # Clear previous logs
-    PROCESS_STATUS['logs'] = []
-    PROCESS_STATUS['errors'] = []
+    if not vtt_file.filename:
+        flash('VTT file is required')
+        return redirect(url_for('index'))
     
-    # Simulate processing for demo
-    if 'vtt_file' in request.files:
-        vtt_file = request.files['vtt_file']
-        if vtt_file.filename:
-            PROCESS_STATUS['vtt_file'] = vtt_file.filename
-            
-    if 'mp4_file' in request.files:
-        mp4_file = request.files['mp4_file']
-        if mp4_file and mp4_file.filename:
-            PROCESS_STATUS['mp4_file'] = mp4_file.filename
+    # Upload VTT file to Supabase
+    file_content = vtt_file.read()
+    filename = f"{client_id}/{vtt_file.filename}"
     
-    # Note: In a real serverless app, we would upload files to cloud storage
-    # and use webhooks or queues to trigger processing
+    if upload_file_to_supabase(file_content, filename):
+        # Create job
+        job_id = create_job(client_id, vtt_file.filename)
+        
+        if job_id:
+            flash('File uploaded and job created successfully')
+        else:
+            flash('File uploaded but job creation failed')
+    else:
+        flash('File upload failed')
     
-    # For the demo, simulate processing
-    simulate_processing()
-    
-    return redirect(url_for('status'))
+    return redirect(url_for('jobs'))
 
-@app.route('/status')
-def status():
-    """Display current processing status"""
-    return render_template('status.html', status=PROCESS_STATUS)
+@app.route('/jobs')
+def jobs():
+    """Display all jobs"""
+    jobs_list = get_jobs()
+    return render_template('jobs.html', jobs=jobs_list)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

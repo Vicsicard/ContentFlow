@@ -21,16 +21,11 @@
     </div>
     
     <div class="form-group">
-        <label for="mp4_file">MP4 File (optional):</label>
-        <input type="file" name="mp4_file" id="mp4_file" accept=".mp4">
-    </div>
-    
-    <div class="form-group">
         <input type="submit" value="Upload and Process">
     </div>
 </form>
 
-{% if status.is_processing %}
-<p><a href="{{ url_for('status') }}">View Current Processing Status</a></p>
-{% endif %}
+<div class="action-links">
+    <a href="{{ url_for('jobs') }}" class="button">View Processing Jobs</a>
+</div>
 {% endblock %}
