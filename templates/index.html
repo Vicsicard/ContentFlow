@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Upload Files</h2>
+<p>Upload a VTT file and select a client to begin processing.</p>
+
+<form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="client_id">Select Client:</label>
+        <select name="client_id" id="client_id" required>
+            <option value="">-- Select a client --</option>
+            {% for client in clients %}
+            <option value="{{ client.id }}">{{ client.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="vtt_file">VTT File (required):</label>
+        <input type="file" name="vtt_file" id="vtt_file" accept=".vtt" required>
+    </div>
+    
+    <div class="form-group">
+        <label for="mp4_file">MP4 File (optional):</label>
+        <input type="file" name="mp4_file" id="mp4_file" accept=".mp4">
+    </div>
+    
+    <div class="form-group">
+        <input type="submit" value="Upload and Process">
+    </div>
+</form>
+
+{% if status.is_processing %}
+<p><a href="{{ url_for('status') }}">View Current Processing Status</a></p>
+{% endif %}
+{% endblock %}

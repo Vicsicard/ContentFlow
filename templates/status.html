@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Processing Status</h2>
+
+{% if status.is_processing %}
+    <div class="status status-processing">
+        <h3>Processing in Progress: {{ status.current_step|upper }}</h3>
+        <p><strong>Client ID:</strong> {{ status.client_id }}</p>
+        <p><strong>VTT File:</strong> {{ status.vtt_file }}</p>
+        {% if status.mp4_file %}
+        <p><strong>MP4 File:</strong> {{ status.mp4_file }}</p>
+        {% endif %}
+        <p><strong>Started:</strong> {{ status.start_time }}</p>
+        <p>Please wait while the process completes. This may take 30-60 minutes depending on file size.</p>
+    </div>
+{% elif status.errors %}
+    <div class="status status-error">
+        <h3>Processing Failed</h3>
+        <p><strong>Client ID:</strong> {{ status.client_id }}</p>
+        <p><strong>VTT File:</strong> {{ status.vtt_file }}</p>
+        <p><strong>Last Step:</strong> {{ status.current_step|upper }}</p>
+        <p>The process encountered errors. Please check the logs below for details.</p>
+    </div>
+{% elif status.logs %}
+    <div class="status status-success">
+        <h3>Processing Complete</h3>
+        <p><strong>Client ID:</strong> {{ status.client_id }}</p>
+        <p><strong>VTT File:</strong> {{ status.vtt_file }}</p>
+        <p>The process has completed successfully!</p>
+    </div>
+{% else %}
+    <div class="status">
+        <p>No active processing. <a href="{{ url_for('index') }}">Return to upload page</a>.</p>
+    </div>
+{% endif %}
+
+{% if status.logs %}
+<h3>Process Logs</h3>
+<div class="logs">
+    {% for log in status.logs %}
+        {% if log in status.errors %}
+        <div class="error-log">{{ log }}</div>
+        {% else %}
+        <div>{{ log }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<p><a href="{{ url_for('index') }}">Return to upload page</a></p>
+{% endblock %}
