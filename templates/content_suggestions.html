@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Content Suggestions for Job #{{ job.id }}</h1>
+    <p>Generated content for the SelfCast Dynamic system.</p>
+    
+    <div class="my-3">
+        <a href="{{ url_for('jobs') }}" class="btn btn-primary">Back to Jobs</a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Job Information</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>Client ID:</strong> {{ job.client_id }}</p>
+            <p><strong>Job ID:</strong> {{ job.id }}</p>
+            <p><strong>Status:</strong> {{ job.status }}</p>
+            <p><strong>VTT File:</strong> {{ job.vtt_filename }}</p>
+            <p><strong>Created:</strong> {{ job.created_at }}</p>
+            <p><strong>Last Updated:</strong> {{ job.last_updated }}</p>
+        </div>
+    </div>
+    
+    <div class="content-section">
+        <h2>Main Profile Content</h2>
+        <div class="profile-card">
+            <div>
+                <h3>{{ content.rendered_subtitle }}</h3>
+                <p><em>Note: Name and profile image will be added by the user in SelfCast Dynamic</em></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Bio</h2>
+        </div>
+        <div class="card-body">
+            <div class="bio-section">
+                <div>{{ content.rendered_bio_html|safe }}</div>
+            </div>
+            
+            <div class="flex-container">
+                <div class="bio-section">
+                    <h3>Mind</h3>
+                    <div>{{ content.rendered_bio_html_card_1|safe }}</div>
+                </div>
+                <div class="bio-section">
+                    <h3>Body</h3>
+                    <div>{{ content.rendered_bio_html_card_2|safe }}</div>
+                </div>
+                <div class="bio-section">
+                    <h3>Soul</h3>
+                    <div>{{ content.rendered_bio_html_card_3|safe }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Quotes</h2>
+        </div>
+        <div class="card-body">
+            <div class="quote">{{ content.quote_1 }}</div>
+            <div class="quote">{{ content.quote_2 }}</div>
+            <div class="quote">{{ content.quote_3 }}</div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Blog Posts</h2>
+        </div>
+        <div class="card-body">
+            {% for i in range(1, 5) %}
+            <div class="blog-post">
+                <div class="blog-title">{{ content['blog_'+i|string+'_title'] }}</div>
+                <div class="blog-excerpt">{{ content['blog_'+i|string+'_excerpt'] }}</div>
+                <div class="blog-content">{{ content['blog_'+i|string] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2>Social Media Content</h2>
+        </div>
+        <div class="card-body">
+            <div class="platform-section">
+                <h3>Facebook Posts</h3>
+                {% for i in range(1, 5) %}
+                <div class="post-card">
+                    <div class="post-title">{{ content['facebook_title_'+i|string] }}</div>
+                    <div class="post-excerpt">
+                        <strong>Excerpt:</strong> {{ content['facebook_excerpt_'+i|string] }}
+                    </div>
+                    <div class="post-content">{{ content['facebook_post_'+i|string] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="platform-section">
+                <h3>Twitter Posts</h3>
+                {% for i in range(1, 5) %}
+                <div class="post-card">
+                    <div class="post-title">{{ content['twitter_title_'+i|string] }}</div>
+                    <div class="post-excerpt">
+                        <strong>Excerpt:</strong> {{ content['twitter_excerpt_'+i|string] }}
+                    </div>
+                    <div class="post-content">{{ content['twitter_post_'+i|string] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="platform-section">
+                <h3>Instagram Posts</h3>
+                {% for i in range(1, 5) %}
+                <div class="post-card">
+                    <div class="post-title">{{ content['instagram_title_'+i|string] }}</div>
+                    <div class="post-excerpt">
+                        <strong>Excerpt:</strong> {{ content['instagram_excerpt_'+i|string] }}
+                    </div>
+                    <div class="post-content">{{ content['instagram_post_'+i|string] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="platform-section">
+                <h3>LinkedIn Posts</h3>
+                {% for i in range(1, 5) %}
+                <div class="post-card">
+                    <div class="post-title">{{ content['linkedin_title_'+i|string] }}</div>
+                    <div class="post-excerpt">
+                        <strong>Excerpt:</strong> {{ content['linkedin_excerpt_'+i|string] }}
+                    </div>
+                    <div class="post-content">{{ content['linkedin_post_'+i|string] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="my-3">
+        <a href="{{ url_for('jobs') }}" class="btn btn-primary">Back to Jobs</a>
+    </div>
+</div>
+{% endblock %}

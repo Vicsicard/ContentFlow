@@ -1,36 +1,131 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block content %}
-<h2>Processing Jobs</h2>
-
-<div class="action-links">
-    <a href="{{ url_for('index') }}" class="button">Upload New File</a>
+<div class="container mt-5">
+    <h1>Processing Jobs</h1>
+    <p class="lead">VTT-Only Workflow Status</p>
+    
+    <div class="my-3">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">Upload New File</a>
+        <form action="{{ url_for('process_jobs') }}" method="post" style="display: inline-block;">
+            <button type="submit" class="btn btn-success ms-2">Process Pending Jobs</button>
+        </form>
+        
+        <!-- Delete All Jobs Button -->
+        <form action="{{ url_for('delete_all_jobs') }}" method="post" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to delete ALL jobs? This cannot be undone.');">
+            <button type="submit" class="btn btn-danger ms-2">Delete All Jobs</button>
+        </form>
+    </div>
+    
+    <div class="alert alert-info mb-4">
+        <strong>VTT-Only Mode Active:</strong> This system processes transcript files without requiring video files. Jobs are considered complete after successful processing through all three apps.
+    </div>
+    
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    
+    {% if process_log %}
+    <div class="card mb-4">
+        <div class="card-header">Processing Log</div>
+        <div class="card-body">
+            <pre>{{ process_log }}</pre>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if jobs %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Client ID</th>
+                <th>Status</th>
+                <th>VTT File</th>
+                <th>Created</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td>{{ job.client_id }}</td>
+                <td>
+                    {% if job.status == 'pending' %}
+                    <span class="badge bg-warning">Pending</span>
+                    {% elif job.status == 'app1' %}
+                    <span class="badge bg-info">App 1 Processing</span>
+                    {% elif job.status == 'app1_complete' %}
+                    <span class="badge bg-primary">App 1 Complete</span>
+                    {% elif job.status == 'app2' %}
+                    <span class="badge bg-info">App 2 Processing</span>
+                    {% elif job.status == 'app2_complete' %}
+                    <span class="badge bg-primary">App 2 Complete</span>
+                    {% elif job.status == 'app3' %}
+                    <span class="badge bg-info">App 3 Processing</span> <small class="text-muted">(Optional)</small>
+                    {% elif job.status == 'complete' %}
+                    <span class="badge bg-success">Complete</span>
+                    {% elif job.status == 'error' %}
+                    <span class="badge bg-danger">Error</span>
+                    {% else %}
+                    {{ job.status }}
+                    {% endif %}
+                </td>
+                <td>{{ job.vtt_filename }}</td>
+                <td>{{ job.created_at }}</td>
+                <td>{{ job.last_updated }}</td>
+                <td>
+                    {% if job.status == 'error' %}
+                    <form action="{{ url_for('reset_job', job_id=job.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-warning">Reset</button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if job.status == 'app2_complete' %}
+                    <form action="{{ url_for('trigger_app3', job_id=job.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-success">Run App 3</button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if job.status == 'app3' or job.status == 'App 3 Processing (Optional)' or job.status == 'app3_complete' %}
+                    <form action="{{ url_for('view_content_suggestions', job_id=job.id) }}" method="get" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-info">View Results</button>
+                    </form>
+                    {% endif %}
+                    
+                    <form action="{{ url_for('reset_job', job_id=job.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-secondary">Reset Job</button>
+                    </form>
+                    
+                    <!-- Delete Job Button -->
+                    <form action="{{ url_for('delete_job', job_id=job.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this job? This cannot be undone.');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="card mt-4">
+        <div class="card-header">Status Information</div>
+        <div class="card-body">
+            <p><span class="badge bg-warning">Pending</span> Job is waiting to be processed</p>
+            <p><span class="badge bg-info">App 1 Processing</span> Transcript is being extracted and chunked</p>
+            <p><span class="badge bg-primary">App 1 Complete</span> Transcript has been processed and chunks are stored</p>
+            <p><span class="badge bg-info">App 2 Processing</span> Style profile is being generated</p>
+            <p><span class="badge bg-primary">App 2 Complete</span> Style profiles have been created and stored</p>
+            <p><span class="badge bg-info">App 3 Processing</span> Content is being generated and stored in dynamic_content table</p>
+            <p><span class="badge bg-success">Complete</span> VTT-only workflow is complete with all content generated and ready to use</p>
+            <p><span class="badge bg-danger">Error</span> An error occurred during processing</p>
+        </div>
+    </div>
+    {% else %}
+    <p>No jobs found. <a href="{{ url_for('upload') }}">Upload a file</a> to create a new job.</p>
+    {% endif %}
+    
+    <div class="action-links mt-4">
+        <a href="{{ url_for('upload') }}" class="btn btn-secondary">Upload New File</a>
+    </div>
 </div>
-
-{% if jobs %}
-<table class="jobs-table">
-    <thead>
-        <tr>
-            <th>Client ID</th>
-            <th>Status</th>
-            <th>VTT File</th>
-            <th>Created</th>
-            <th>Last Updated</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for job in jobs %}
-        <tr class="status-{{ job.status }}">
-            <td>{{ job.client_id }}</td>
-            <td>{{ job.status }}</td>
-            <td>{{ job.vtt_filename }}</td>
-            <td>{{ job.created_at }}</td>
-            <td>{{ job.last_updated }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>No jobs found. <a href="{{ url_for('index') }}">Upload a file</a> to create a new job.</p>
-{% endif %}
 {% endblock %}
