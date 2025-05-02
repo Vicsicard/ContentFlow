@@ -5,6 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import requests
 from dotenv import load_dotenv
 import uuid
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -109,6 +110,7 @@ def get_jobs():
 def upload_file_to_supabase(file_content, filename, bucket_name="input-files"):
     """Upload a file to Supabase Storage"""
     try:
+        print(f"DEBUG: Uploading file to Supabase: {filename}")
         supabase = get_supabase_client()
         
         # Storage API has a different endpoint
@@ -118,64 +120,92 @@ def upload_file_to_supabase(file_content, filename, bucket_name="input-files"):
         headers = supabase["headers"].copy()
         headers["Content-Type"] = "application/octet-stream"
         
+        print("DEBUG: Preparing upload request")
+        
         response = requests.post(
             storage_url,
             headers=headers,
             data=file_content
         )
         
+        print(f"DEBUG: Upload response status: {response.status_code}")
+        print(f"DEBUG: Upload response text: {response.text}")
+        
         if response.status_code == 200:
+            print("DEBUG: File upload to Supabase successful")
             return True
         else:
-            print(f"Error uploading file: {response.status_code} {response.text}")
+            print(f"DEBUG ERROR: File upload failed - Status: {response.status_code}, Response: {response.text}")
             return False
+            
     except Exception as e:
-        print(f"Error uploading file: {str(e)}")
+        print(f"DEBUG EXCEPTION in upload_file_to_supabase: {str(e)}")
+        print(f"DEBUG EXCEPTION TRACEBACK: {traceback.format_exc()}")
         return False
 
 def create_new_client(client_name):
-    """Create a new client in the database"""
+    """Create a new client in the database with detailed error logging"""
     try:
+        print(f"DEBUG: Creating new client: {client_name}")
         supabase = get_supabase_client()
         
         # Insert the new client
+        print("DEBUG: Sending request to Supabase to create client")
         response = requests.post(
             f"{supabase['url']}/rest/v1/clients",
             headers=supabase["headers"],
             json={"name": client_name}
         )
         
+        print(f"DEBUG: Supabase response status: {response.status_code}")
+        print(f"DEBUG: Supabase response text: {response.text}")
+        
         if response.status_code == 201:
             # Get the ID of the newly created client
             client_data = response.json()
-            return client_data[0]['id'] if client_data else None
+            client_id = client_data[0]['id'] if client_data else None
+            print(f"DEBUG: New client created with ID: {client_id}")
+            return client_id
         else:
-            print(f"Error creating client: {response.status_code} {response.text}")
+            print(f"DEBUG ERROR: Failed to create client - Status: {response.status_code}, Response: {response.text}")
             return None
     except Exception as e:
-        print(f"Error creating client: {str(e)}")
+        print(f"DEBUG EXCEPTION in create_new_client: {str(e)}")
+        print(f"DEBUG EXCEPTION TRACEBACK: {traceback.format_exc()}")
         return None
 
 def process_upload(client_id, vtt_file):
-    """Process the upload"""
+    """Process the upload with detailed error logging"""
     try:
+        print(f"DEBUG: Processing upload for client: {client_id}")
+        
         # Upload VTT file to Supabase
+        print("DEBUG: Reading file content")
         file_content = vtt_file.read()
         filename = f"{client_id}/{vtt_file.filename}"
+        print(f"DEBUG: Target filename in Supabase: {filename}")
         
-        if upload_file_to_supabase(file_content, filename):
+        print("DEBUG: Uploading file to Supabase")
+        upload_success = upload_file_to_supabase(file_content, filename)
+        print(f"DEBUG: Upload result: {upload_success}")
+        
+        if upload_success:
             # Create job
+            print("DEBUG: Creating job record")
             job_id = create_job(client_id, vtt_file.filename)
+            print(f"DEBUG: Job created with ID: {job_id}")
             
             if job_id:
                 return True, 'File uploaded and job created successfully'
             else:
                 return False, 'File uploaded but job creation failed'
         else:
-            return False, 'File upload failed'
+            return False, 'File upload to Supabase failed'
     except Exception as e:
-        print(f"Error in upload: {str(e)}")
-        return False, f"An error occurred: {str(e)}"
+        error_msg = f"Error in process_upload: {str(e)}"
+        print(f"DEBUG EXCEPTION: {error_msg}")
+        print(f"DEBUG EXCEPTION TRACEBACK: {traceback.format_exc()}")
+        return False, error_msg
 
 # Routes
 @app.route('/', methods=['GET'])
@@ -186,57 +216,93 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    """Handle file upload and job creation with detailed error logging"""
     try:
+        print("DEBUG: Upload function started")
+        print(f"DEBUG: Form data: {request.form}")
+        print(f"DEBUG: Files: {request.files}")
+        
         client_id = request.form.get('client_id')
+        print(f"DEBUG: Client ID: {client_id}")
         
         # Handle new client creation
         if client_id == 'new':
+            print("DEBUG: Creating new client")
             new_client_name = request.form.get('newClientName')
+            print(f"DEBUG: New client name: {new_client_name}")
+            
             if not new_client_name or new_client_name.strip() == '':
+                error_msg = "Please enter a name for the new client"
+                print(f"DEBUG ERROR: {error_msg}")
                 return render_template('index.html', 
                                      clients=get_clients_from_supabase(), 
-                                     error="Please enter a name for the new client")
+                                     error=error_msg)
                 
             # Create new client in database
             client_id = create_new_client(new_client_name)
+            print(f"DEBUG: New client created with ID: {client_id}")
+            
             if not client_id:
+                error_msg = "Failed to create new client in Supabase"
+                print(f"DEBUG ERROR: {error_msg}")
                 return render_template('index.html', 
                                      clients=get_clients_from_supabase(), 
-                                     error="Failed to create new client")
+                                     error=error_msg)
+        
+        # Validate client_id
+        if not client_id:
+            error_msg = "No client selected"
+            print(f"DEBUG ERROR: {error_msg}")
+            return render_template('index.html', 
+                                 clients=get_clients_from_supabase(), 
+                                 error=error_msg)
         
         # Handle file upload
         if 'vtt_file' not in request.files:
+            error_msg = "No file uploaded"
+            print(f"DEBUG ERROR: {error_msg}")
             return render_template('index.html', 
                                  clients=get_clients_from_supabase(), 
-                                 error="No file uploaded")
+                                 error=error_msg)
             
         vtt_file = request.files['vtt_file']
+        print(f"DEBUG: VTT filename: {vtt_file.filename}")
         
         if vtt_file.filename == '':
+            error_msg = "No file selected"
+            print(f"DEBUG ERROR: {error_msg}")
             return render_template('index.html', 
                                  clients=get_clients_from_supabase(), 
-                                 error="No file selected")
+                                 error=error_msg)
             
         if not vtt_file.filename.endswith('.vtt'):
+            error_msg = "File must be a .vtt file"
+            print(f"DEBUG ERROR: {error_msg}")
             return render_template('index.html', 
                                  clients=get_clients_from_supabase(), 
-                                 error="File must be a .vtt file")
+                                 error=error_msg)
         
         # Process the upload
+        print("DEBUG: Processing upload")
         success, message = process_upload(client_id, vtt_file)
+        print(f"DEBUG: Upload process result - Success: {success}, Message: {message}")
         
         if success:
+            print("DEBUG: Upload successful, redirecting to jobs page")
             return redirect(url_for('jobs'))
         else:
+            print(f"DEBUG ERROR: Upload failed - {message}")
             return render_template('index.html', 
                                  clients=get_clients_from_supabase(), 
                                  error=message)
     
     except Exception as e:
-        print(f"Error in upload: {str(e)}")
+        error_msg = f"An error occurred: {str(e)}"
+        print(f"DEBUG EXCEPTION: {error_msg}")
+        print(f"DEBUG EXCEPTION TRACEBACK: {traceback.format_exc()}")
         return render_template('index.html', 
                              clients=get_clients_from_supabase(), 
-                             error=f"An error occurred: {str(e)}")
+                             error=error_msg)
 
 @app.route('/jobs')
 def jobs():

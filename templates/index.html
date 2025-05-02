@@ -9,10 +9,10 @@
     <div class="alert alert-danger">{{ error }}</div>
     {% endif %}
     
-    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('upload') }}" enctype="multipart/form-data">
         <div class="mb-3">
-            <label for="client" class="form-label">Select Client</label>
-            <select class="form-select" id="client" name="client_id" onchange="toggleNewClient()">
+            <label for="client_id" class="form-label">Select Client</label>
+            <select class="form-select" id="client_id" name="client_id" onchange="toggleNewClient()">
                 <option value="">-- Select Client --</option>
                 <option value="new">++ Create New Client ++</option>
                 {% for client in clients %}
@@ -27,8 +27,8 @@
         </div>
         
         <div class="mb-3">
-            <label for="vttFile" class="form-label">VTT File (required):</label>
-            <input class="form-control" type="file" id="vttFile" name="vtt_file" accept=".vtt" required>
+            <label for="vtt_file" class="form-label">VTT File (required):</label>
+            <input class="form-control" type="file" id="vtt_file" name="vtt_file" accept=".vtt" required>
         </div>
         
         <button type="submit" class="btn btn-primary">Upload and Process</button>
@@ -40,7 +40,7 @@
 
 <script>
 function toggleNewClient() {
-    var clientSelect = document.getElementById('client');
+    var clientSelect = document.getElementById('client_id');
     var newClientDiv = document.getElementById('newClientDiv');
     
     if (clientSelect.value === 'new') {
