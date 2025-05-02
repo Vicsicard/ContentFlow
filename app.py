@@ -133,8 +133,52 @@ def upload_file_to_supabase(file_content, filename, bucket_name="input-files"):
         print(f"Error uploading file: {str(e)}")
         return False
 
+def create_new_client(client_name):
+    """Create a new client in the database"""
+    try:
+        supabase = get_supabase_client()
+        
+        # Insert the new client
+        response = requests.post(
+            f"{supabase['url']}/rest/v1/clients",
+            headers=supabase["headers"],
+            json={"name": client_name}
+        )
+        
+        if response.status_code == 201:
+            # Get the ID of the newly created client
+            client_data = response.json()
+            return client_data[0]['id'] if client_data else None
+        else:
+            print(f"Error creating client: {response.status_code} {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error creating client: {str(e)}")
+        return None
+
+def process_upload(client_id, vtt_file):
+    """Process the upload"""
+    try:
+        # Upload VTT file to Supabase
+        file_content = vtt_file.read()
+        filename = f"{client_id}/{vtt_file.filename}"
+        
+        if upload_file_to_supabase(file_content, filename):
+            # Create job
+            job_id = create_job(client_id, vtt_file.filename)
+            
+            if job_id:
+                return True, 'File uploaded and job created successfully'
+            else:
+                return False, 'File uploaded but job creation failed'
+        else:
+            return False, 'File upload failed'
+    except Exception as e:
+        print(f"Error in upload: {str(e)}")
+        return False, f"An error occurred: {str(e)}"
+
 # Routes
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     """Display the upload form"""
     clients = get_clients_from_supabase()
@@ -142,39 +186,57 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    """Handle file upload and create job"""
-    client_id = request.form.get('client_id')
-    
-    if not client_id:
-        flash('Client ID is required')
-        return redirect(url_for('index'))
-    
-    if 'vtt_file' not in request.files:
-        flash('VTT file is required')
-        return redirect(url_for('index'))
+    try:
+        client_id = request.form.get('client_id')
         
-    vtt_file = request.files['vtt_file']
-    
-    if not vtt_file.filename:
-        flash('VTT file is required')
-        return redirect(url_for('index'))
-    
-    # Upload VTT file to Supabase
-    file_content = vtt_file.read()
-    filename = f"{client_id}/{vtt_file.filename}"
-    
-    if upload_file_to_supabase(file_content, filename):
-        # Create job
-        job_id = create_job(client_id, vtt_file.filename)
+        # Handle new client creation
+        if client_id == 'new':
+            new_client_name = request.form.get('newClientName')
+            if not new_client_name or new_client_name.strip() == '':
+                return render_template('index.html', 
+                                     clients=get_clients_from_supabase(), 
+                                     error="Please enter a name for the new client")
+                
+            # Create new client in database
+            client_id = create_new_client(new_client_name)
+            if not client_id:
+                return render_template('index.html', 
+                                     clients=get_clients_from_supabase(), 
+                                     error="Failed to create new client")
         
-        if job_id:
-            flash('File uploaded and job created successfully')
+        # Handle file upload
+        if 'vtt_file' not in request.files:
+            return render_template('index.html', 
+                                 clients=get_clients_from_supabase(), 
+                                 error="No file uploaded")
+            
+        vtt_file = request.files['vtt_file']
+        
+        if vtt_file.filename == '':
+            return render_template('index.html', 
+                                 clients=get_clients_from_supabase(), 
+                                 error="No file selected")
+            
+        if not vtt_file.filename.endswith('.vtt'):
+            return render_template('index.html', 
+                                 clients=get_clients_from_supabase(), 
+                                 error="File must be a .vtt file")
+        
+        # Process the upload
+        success, message = process_upload(client_id, vtt_file)
+        
+        if success:
+            return redirect(url_for('jobs'))
         else:
-            flash('File uploaded but job creation failed')
-    else:
-        flash('File upload failed')
+            return render_template('index.html', 
+                                 clients=get_clients_from_supabase(), 
+                                 error=message)
     
-    return redirect(url_for('jobs'))
+    except Exception as e:
+        print(f"Error in upload: {str(e)}")
+        return render_template('index.html', 
+                             clients=get_clients_from_supabase(), 
+                             error=f"An error occurred: {str(e)}")
 
 @app.route('/jobs')
 def jobs():

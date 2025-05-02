@@ -1,31 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Upload Files</h2>
-<p>Upload a VTT file and select a client to begin processing.</p>
-
-<form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
-    <div class="form-group">
-        <label for="client_id">Select Client:</label>
-        <select name="client_id" id="client_id" required>
-            <option value="">-- Select a client --</option>
-            {% for client in clients %}
-            <option value="{{ client.id }}">{{ client.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+<div class="container mt-5">
+    <h1>ContentFlow Upload</h1>
+    <p>Upload a VTT file for processing</p>
     
-    <div class="form-group">
-        <label for="vtt_file">VTT File (required):</label>
-        <input type="file" name="vtt_file" id="vtt_file" accept=".vtt" required>
-    </div>
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
     
-    <div class="form-group">
-        <input type="submit" value="Upload and Process">
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="client" class="form-label">Select Client</label>
+            <select class="form-select" id="client" name="client_id" onchange="toggleNewClient()">
+                <option value="">-- Select Client --</option>
+                <option value="new">++ Create New Client ++</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="mb-3" id="newClientDiv" style="display: none;">
+            <label for="newClientName" class="form-label">New Client Name</label>
+            <input type="text" class="form-control" id="newClientName" name="newClientName" placeholder="Enter client name">
+        </div>
+        
+        <div class="mb-3">
+            <label for="vttFile" class="form-label">VTT File (required):</label>
+            <input class="form-control" type="file" id="vttFile" name="vtt_file" accept=".vtt" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Upload and Process</button>
+    </form>
+    
+    <div class="action-links">
+        <a href="{{ url_for('jobs') }}" class="button">View Processing Jobs</a>
     </div>
-</form>
 
-<div class="action-links">
-    <a href="{{ url_for('jobs') }}" class="button">View Processing Jobs</a>
-</div>
+<script>
+function toggleNewClient() {
+    var clientSelect = document.getElementById('client');
+    var newClientDiv = document.getElementById('newClientDiv');
+    
+    if (clientSelect.value === 'new') {
+        newClientDiv.style.display = 'block';
+    } else {
+        newClientDiv.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}
